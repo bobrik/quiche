@@ -272,24 +272,24 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[repr(C)]
 pub enum Error {
     /// There is no more work to do.
-    Done               = -1,
+    Done = -1,
 
     /// The provided buffer is too short.
-    BufferTooShort     = -2,
+    BufferTooShort = -2,
 
     /// The provided packet cannot be parsed because its version is unknown.
-    UnknownVersion     = -3,
+    UnknownVersion = -3,
 
     /// The provided packet cannot be parsed because it contains an invalid
     /// frame.
-    InvalidFrame       = -4,
+    InvalidFrame = -4,
 
     /// The provided packet cannot be parsed.
-    InvalidPacket      = -5,
+    InvalidPacket = -5,
 
     /// The operation cannot be completed because the connection is in an
     /// invalid state.
-    InvalidState       = -6,
+    InvalidState = -6,
 
     /// The operation cannot be completed because the stream is in an
     /// invalid state.
@@ -299,19 +299,19 @@ pub enum Error {
     InvalidTransportParam = -8,
 
     /// A cryptographic operation failed.
-    CryptoFail         = -9,
+    CryptoFail = -9,
 
     /// The TLS handshake failed.
-    TlsFail            = -10,
+    TlsFail = -10,
 
     /// The peer violated the local flow control limits.
-    FlowControl        = -11,
+    FlowControl = -11,
 
     /// The peer violated the local stream limits.
-    StreamLimit        = -12,
+    StreamLimit = -12,
 
     /// The received data exceeds the stream's final size.
-    FinalSize          = -13,
+    FinalSize = -13,
 }
 
 impl Error {
@@ -361,7 +361,7 @@ impl std::convert::From<octets::BufferTooShortError> for Error {
 #[repr(C)]
 pub enum Shutdown {
     /// Stop receiving stream data.
-    Read  = 0,
+    Read = 0,
 
     /// Stop sending stream data.
     Write = 1,
@@ -1039,7 +1039,7 @@ impl Connection {
                     // the connection.
                     self.close(false, e.to_wire(), b"").ok();
                     return Err(e);
-                },
+                }
             };
 
             done += read;
@@ -1230,7 +1230,7 @@ impl Connection {
                 );
 
                 return Ok(header_len + payload_len);
-            },
+            }
         };
 
         let aead_tag_len = aead.alg().tag_len();
@@ -1319,14 +1319,14 @@ impl Connection {
                             .recv_pkt_need_ack
                             .remove_until(largest_acked);
                     }
-                },
+                }
 
                 frame::Frame::Crypto { data } => {
                     self.pkt_num_spaces[epoch]
                         .crypto_stream
                         .send
                         .ack(data.off(), data.len());
-                },
+                }
 
                 frame::Frame::Stream { stream_id, data } => {
                     let stream = match self.streams.get_mut(stream_id) {
@@ -1341,7 +1341,7 @@ impl Connection {
                         let local = stream.local;
                         self.streams.collect(stream_id, local);
                     }
-                },
+                }
 
                 _ => (),
             }
@@ -1479,7 +1479,7 @@ impl Connection {
             match lost {
                 frame::Frame::Crypto { data } => {
                     self.pkt_num_spaces[epoch].crypto_stream.send.push(data)?;
-                },
+                }
 
                 frame::Frame::Stream { stream_id, data } => {
                     let stream = match self.streams.get_mut(stream_id) {
@@ -1502,11 +1502,11 @@ impl Connection {
                     if stream.is_flushable() && !was_flushable {
                         self.streams.push_flushable(stream_id);
                     }
-                },
+                }
 
                 frame::Frame::ACK { .. } => {
                     self.pkt_num_spaces[epoch].ack_elicited = true;
-                },
+                }
 
                 _ => (),
             }
@@ -1562,8 +1562,8 @@ impl Connection {
             let ack_delay =
                 self.pkt_num_spaces[epoch].largest_rx_pkt_time.elapsed();
 
-            let ack_delay = ack_delay.as_micros() as u64 /
-                2_u64
+            let ack_delay = ack_delay.as_micros() as u64
+                / 2_u64
                     .pow(self.local_transport_params.ack_delay_exponent as u32);
 
             let frame = frame::Frame::ACK {
@@ -1639,7 +1639,7 @@ impl Connection {
                         // the almost full set.
                         self.streams.mark_almost_full(stream_id, false);
                         continue;
-                    },
+                    }
                 };
 
                 let frame = frame::Frame::MaxStreamData {
@@ -1735,9 +1735,9 @@ impl Connection {
         }
 
         // Create CRYPTO frame.
-        if self.pkt_num_spaces[epoch].crypto_stream.is_flushable() &&
-            left > frame::MAX_CRYPTO_OVERHEAD &&
-            !is_closing
+        if self.pkt_num_spaces[epoch].crypto_stream.is_flushable()
+            && left > frame::MAX_CRYPTO_OVERHEAD
+            && !is_closing
         {
             let crypto_len = left - frame::MAX_CRYPTO_OVERHEAD;
             let crypto_buf = self.pkt_num_spaces[epoch]
@@ -1758,10 +1758,10 @@ impl Connection {
         }
 
         // Create a single STREAM frame for the first stream that is flushable.
-        if pkt_type == packet::Type::Short &&
-            self.max_tx_data > self.tx_data &&
-            left > frame::MAX_STREAM_OVERHEAD &&
-            !is_closing
+        if pkt_type == packet::Type::Short
+            && self.max_tx_data > self.tx_data
+            && left > frame::MAX_STREAM_OVERHEAD
+            && !is_closing
         {
             while let Some(stream_id) = self.streams.pop_flushable() {
                 let stream = match self.streams.get_mut(stream_id) {
@@ -1906,9 +1906,9 @@ impl Connection {
 
         // (Re)start the idle timer if we are sending the first ACK-eliciting
         // packet since last receiving a packet.
-        if ack_eliciting &&
-            !self.ack_eliciting_sent &&
-            self.local_transport_params.idle_timeout > 0
+        if ack_eliciting
+            && !self.ack_eliciting_sent
+            && self.local_transport_params.idle_timeout > 0
         {
             self.idle_timer = Some(now + self.idle_timeout());
         }
@@ -1948,8 +1948,8 @@ impl Connection {
         &mut self, stream_id: u64, out: &mut [u8],
     ) -> Result<(usize, bool)> {
         // We can't read on our own unidirectional streams.
-        if !stream::is_bidi(stream_id) &&
-            stream::is_local(stream_id, self.is_server)
+        if !stream::is_bidi(stream_id)
+            && stream::is_local(stream_id, self.is_server)
         {
             return Err(Error::InvalidStreamState);
         }
@@ -2016,8 +2016,8 @@ impl Connection {
         &mut self, stream_id: u64, buf: &[u8], fin: bool,
     ) -> Result<usize> {
         // We can't write on the peer's unidirectional streams.
-        if !stream::is_bidi(stream_id) &&
-            !stream::is_local(stream_id, self.is_server)
+        if !stream::is_bidi(stream_id)
+            && !stream::is_local(stream_id, self.is_server)
         {
             return Err(Error::InvalidStreamState);
         }
@@ -2074,7 +2074,7 @@ impl Connection {
 
                 // Once shutdown, the stream is guaranteed to be non-readable.
                 self.streams.mark_readable(stream_id, false);
-            },
+            }
 
             // TODO: send RESET_STREAM
             Shutdown::Write => {
@@ -2082,7 +2082,7 @@ impl Connection {
 
                 // Once shutdown, the stream is guaranteed to be non-writable.
                 self.streams.mark_writable(stream_id, false);
-            },
+            }
         }
 
         Ok(())
@@ -2340,7 +2340,7 @@ impl Connection {
     /// Continues the handshake.
     ///
     /// If the connection is already established, it does nothing.
-    fn do_handshake(&mut self, now: time::Instant) -> Result<()> {
+    pub fn do_handshake(&mut self, now: time::Instant) -> Result<()> {
         if !self.handshake_completed {
             match self.handshake.do_handshake() {
                 Ok(_) => {
@@ -2393,7 +2393,7 @@ impl Connection {
                     {
                         self.process_frame(f, packet::EPOCH_APPLICATION, now)?;
                     }
-                },
+                }
 
                 Err(Error::Done) => (),
 
@@ -2437,12 +2437,12 @@ impl Connection {
         }
 
         // If there are flushable streams, use Application.
-        if self.handshake_completed &&
-            (self.should_update_max_data() ||
-                self.streams.should_update_max_streams_bidi() ||
-                self.streams.should_update_max_streams_uni() ||
-                self.streams.has_flushable() ||
-                self.streams.has_almost_full())
+        if self.handshake_completed
+            && (self.should_update_max_data()
+                || self.streams.should_update_max_streams_bidi()
+                || self.streams.should_update_max_streams_uni()
+                || self.streams.has_flushable()
+                || self.streams.has_almost_full())
         {
             return Ok(packet::EPOCH_APPLICATION);
         }
@@ -2500,7 +2500,7 @@ impl Connection {
                     // keys.
                     self.drop_epoch_state(packet::EPOCH_HANDSHAKE);
                 }
-            },
+            }
 
             frame::Frame::ResetStream {
                 stream_id,
@@ -2508,8 +2508,8 @@ impl Connection {
                 ..
             } => {
                 // Peer can't send on our unidirectional streams.
-                if !stream::is_bidi(stream_id) &&
-                    stream::is_local(stream_id, self.is_server)
+                if !stream::is_bidi(stream_id)
+                    && stream::is_local(stream_id, self.is_server)
                 {
                     return Err(Error::InvalidStreamState);
                 }
@@ -2522,16 +2522,16 @@ impl Connection {
                 if self.rx_data > self.max_rx_data {
                     return Err(Error::FlowControl);
                 }
-            },
+            }
 
             frame::Frame::StopSending { stream_id, .. } => {
                 // STOP_SENDING on a receive-only stream is a fatal error.
-                if !stream::is_local(stream_id, self.is_server) &&
-                    !stream::is_bidi(stream_id)
+                if !stream::is_local(stream_id, self.is_server)
+                    && !stream::is_bidi(stream_id)
                 {
                     return Err(Error::InvalidStreamState);
                 }
-            },
+            }
 
             frame::Frame::Crypto { data } => {
                 // Push the data to the stream so it can be re-ordered.
@@ -2551,15 +2551,15 @@ impl Connection {
                 }
 
                 self.do_handshake(now)?;
-            },
+            }
 
             // TODO: implement stateless retry
             frame::Frame::NewToken { .. } => (),
 
             frame::Frame::Stream { stream_id, data } => {
                 // Peer can't send on our unidirectional streams.
-                if !stream::is_bidi(stream_id) &&
-                    stream::is_local(stream_id, self.is_server)
+                if !stream::is_bidi(stream_id)
+                    && stream::is_local(stream_id, self.is_server)
                 {
                     return Err(Error::InvalidStreamState);
                 }
@@ -2581,11 +2581,11 @@ impl Connection {
                 }
 
                 self.rx_data += data_len;
-            },
+            }
 
             frame::Frame::MaxData { max } => {
                 self.max_tx_data = cmp::max(self.max_tx_data, max);
-            },
+            }
 
             frame::Frame::MaxStreamData { stream_id, max } => {
                 // Get existing stream or create a new one.
@@ -2606,7 +2606,7 @@ impl Connection {
                 if writable {
                     self.streams.mark_writable(stream_id, true);
                 }
-            },
+            }
 
             frame::Frame::MaxStreamsBidi { max } => {
                 if max > 2u64.pow(60) {
@@ -2614,7 +2614,7 @@ impl Connection {
                 }
 
                 self.streams.update_peer_max_streams_bidi(max);
-            },
+            }
 
             frame::Frame::MaxStreamsUni { max } => {
                 if max > 2u64.pow(60) {
@@ -2622,7 +2622,7 @@ impl Connection {
                 }
 
                 self.streams.update_peer_max_streams_uni(max);
-            },
+            }
 
             frame::Frame::DataBlocked { .. } => (),
 
@@ -2640,17 +2640,17 @@ impl Connection {
 
             frame::Frame::PathChallenge { data } => {
                 self.challenge = Some(data);
-            },
+            }
 
             frame::Frame::PathResponse { .. } => (),
 
             frame::Frame::ConnectionClose { .. } => {
                 self.draining_timer = Some(now + (self.recovery.pto() * 3));
-            },
+            }
 
             frame::Frame::ApplicationClose { .. } => {
                 self.draining_timer = Some(now + (self.recovery.pto() * 3));
-            },
+            }
         }
 
         Ok(())
@@ -2675,8 +2675,8 @@ impl Connection {
     /// This happens when the new max data limit is at least double the amount
     /// of data that can be received before blocking.
     fn should_update_max_data(&self) -> bool {
-        self.max_rx_data_next != self.max_rx_data &&
-            self.max_rx_data_next / 2 > self.max_rx_data - self.rx_data
+        self.max_rx_data_next != self.max_rx_data
+            && self.max_rx_data_next / 2 > self.max_rx_data - self.rx_data
     }
 
     /// Returns the idle timeout value.
@@ -2783,11 +2783,11 @@ impl TransportParams {
                     }
 
                     tp.original_connection_id = Some(val.to_vec());
-                },
+                }
 
                 0x0001 => {
                     tp.idle_timeout = val.get_varint()?;
-                },
+                }
 
                 0x0002 => {
                     if is_server {
@@ -2795,27 +2795,27 @@ impl TransportParams {
                     }
 
                     tp.stateless_reset_token = Some(val.get_bytes(16)?.to_vec());
-                },
+                }
 
                 0x0003 => {
                     tp.max_packet_size = val.get_varint()?;
-                },
+                }
 
                 0x0004 => {
                     tp.initial_max_data = val.get_varint()?;
-                },
+                }
 
                 0x0005 => {
                     tp.initial_max_stream_data_bidi_local = val.get_varint()?;
-                },
+                }
 
                 0x0006 => {
                     tp.initial_max_stream_data_bidi_remote = val.get_varint()?;
-                },
+                }
 
                 0x0007 => {
                     tp.initial_max_stream_data_uni = val.get_varint()?;
-                },
+                }
 
                 0x0008 => {
                     let max = val.get_varint()?;
@@ -2825,7 +2825,7 @@ impl TransportParams {
                     }
 
                     tp.initial_max_streams_bidi = max;
-                },
+                }
 
                 0x0009 => {
                     let max = val.get_varint()?;
@@ -2835,7 +2835,7 @@ impl TransportParams {
                     }
 
                     tp.initial_max_streams_uni = max;
-                },
+                }
 
                 0x000a => {
                     let ack_delay_exponent = val.get_varint()?;
@@ -2845,7 +2845,7 @@ impl TransportParams {
                     }
 
                     tp.ack_delay_exponent = ack_delay_exponent;
-                },
+                }
 
                 0x000b => {
                     let max_ack_delay = val.get_varint()?;
@@ -2855,11 +2855,11 @@ impl TransportParams {
                     }
 
                     tp.max_ack_delay = max_ack_delay;
-                },
+                }
 
                 0x000c => {
                     tp.disable_active_migration = true;
-                },
+                }
 
                 0x000d => {
                     if is_server {
@@ -2867,11 +2867,11 @@ impl TransportParams {
                     }
 
                     // TODO: decode preferred_address
-                },
+                }
 
                 0x000e => {
                     tp.active_conn_id_limit = val.get_varint()?;
-                },
+                }
 
                 // Ignore unknown parameters.
                 _ => (),
